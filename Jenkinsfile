@@ -4,8 +4,9 @@ pipeline {
     environment {
         APP_NAME = "sit753-devops-api"
         STAGING_PORT = "5001"
-        PROD_PORT = "8080"
+        PROD_PORT = "5002"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_HOST = "tcp://localhost:2375"
     }
 
     stages {
@@ -28,7 +29,6 @@ pipeline {
         stage('3. Code Quality') {
             steps {
                 echo '=== STAGE 3: CODE QUALITY & STATIC CODE ANALYSIS ==='
-                // Runs syntax check and code structure validation
                 sh 'node -c server.js server.test.js'
                 echo 'Code quality analysis passed: Structure verified, zero syntax defects detected.'
             }
@@ -37,7 +37,6 @@ pipeline {
         stage('4. Security') {
             steps {
                 echo '=== STAGE 4: SECURITY VULNERABILITY AUDIT ==='
-                // Audits dependencies for known CVEs
                 sh 'npm audit --audit-level=critical || true'
                 echo 'Dependency vulnerability scan executed successfully.'
             }
@@ -46,7 +45,6 @@ pipeline {
         stage('5. Deploy') {
             steps {
                 echo '=== STAGE 5: DEPLOYING TO STAGING ENVIRONMENT ==='
-                // Stop any previous staging container if running, then run fresh container
                 sh '''
                     docker rm -f ${APP_NAME}-staging || true
                     docker run -d --name ${APP_NAME}-staging -p ${STAGING_PORT}:8080 ${APP_NAME}:${IMAGE_TAG}
@@ -58,7 +56,6 @@ pipeline {
         stage('6. Release') {
             steps {
                 echo '=== STAGE 6: RELEASING TO PRODUCTION ENVIRONMENT ==='
-                // Stop any previous production container, then launch production release
                 sh '''
                     docker rm -f ${APP_NAME}-prod || true
                     docker run -d --name ${APP_NAME}-prod -p ${PROD_PORT}:8080 ${APP_NAME}:${IMAGE_TAG}
@@ -70,7 +67,6 @@ pipeline {
         stage('7. Monitoring') {
             steps {
                 echo '=== STAGE 7: HEALTH PROBING & METRICS MONITORING ==='
-                // Wait briefly for containers to initialize, then verify endpoints
                 sleep time: 3, unit: 'SECONDS'
                 sh '''
                     curl -s http://localhost:${PROD_PORT}/health | grep -q "healthy"
